@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 // ============================================================================
-// CONFIG - UPDATED WITH YOUR IDS
+// CONFIG - NO AUTHENTICATION
 // ============================================================================
 
 const CONFIG = {
   SHEET_ID: '16O97Xr0T95Br21fmoGF1GtbeV0q5AujbddsbADgcMnI',
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbwxMAdL5qw6DZTIp8k1oDStalAoTjt_ZMjHsUNffDzCicqMpb_pKadBckg4wH8I31ZL2A/userweb'
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbzNAg1eFCcua9dblozd2HYPmGgya7Y2G6Pvv0_5COM8yuWwgTtS0ioal1CrsyT4ByuX/userweb'
 };
 
 // ============================================================================
@@ -135,79 +135,6 @@ function useProduct() {
 }
 
 // ============================================================================
-// LOGIN PAGE
-// ============================================================================
-
-function LoginPage({ onLogin }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    const result = await API.call('login', { username, password });
-
-    if (result.success) {
-      onLogin({
-        username: result.username,
-        agentName: result.agentName,
-        role: result.role,
-        token: result.token
-      });
-    } else {
-      setError(result.error || 'Login failed');
-    }
-
-    setLoading(false);
-  };
-
-  return (
-    <div className="login-container">
-      <div className="login-card">
-        <h1>Recovery App</h1>
-        <p className="subtitle">Collection Management System</p>
-
-        <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label>Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-
-          {error && <div className="error-message">{error}</div>}
-
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="demo-info">Demo: agent1 / 1234</p>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
 // PRODUCT SELECTOR
 // ============================================================================
 
@@ -240,7 +167,7 @@ function ProductSelector() {
 // DASHBOARD PAGE
 // ============================================================================
 
-function Dashboard({ user, onLogout, onNavigate }) {
+function Dashboard({ onNavigate }) {
   const { selectedProduct, productsLoaded } = useProduct();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -254,8 +181,7 @@ function Dashboard({ user, onLogout, onNavigate }) {
   const loadDashboard = async () => {
     setLoading(true);
     const result = await API.call('getDashboardSummaryByProduct', { 
-      productName: selectedProduct,
-      agentName: user.agentName 
+      productName: selectedProduct
     });
     if (result.success) {
       setSummary(result.data);
@@ -272,10 +198,6 @@ function Dashboard({ user, onLogout, onNavigate }) {
         <div>
           <h1>Recovery Dashboard</h1>
           <ProductSelector />
-        </div>
-        <div className="header-info">
-          <span>Welcome, {user.agentName}</span>
-          <button onClick={onLogout} className="btn-logout">Logout</button>
         </div>
       </header>
 
@@ -316,7 +238,7 @@ function Dashboard({ user, onLogout, onNavigate }) {
 // ACCOUNTS LIST PAGE
 // ============================================================================
 
-function AccountsPage({ user, onNavigate, onSelectAccount }) {
+function AccountsPage({ onNavigate, onSelectAccount }) {
   const { selectedProduct, productsLoaded } = useProduct();
   const [accounts, setAccounts] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -334,9 +256,8 @@ function AccountsPage({ user, onNavigate, onSelectAccount }) {
   }, [accounts, filterStatus]);
 
   const loadAccounts = async () => {
-    const result = await API.call('getAccountsByProductAndAgent', { 
-      productName: selectedProduct,
-      agentName: user.agentName 
+    const result = await API.call('getAccountsByProduct', { 
+      productName: selectedProduct
     });
     if (result.success) {
       setAccounts(result.data);
@@ -359,7 +280,7 @@ function AccountsPage({ user, onNavigate, onSelectAccount }) {
     <div className="accounts-page">
       <header className="page-header">
         <div>
-          <h1>{selectedProduct} - My Accounts</h1>
+          <h1>{selectedProduct} - All Accounts</h1>
           <ProductSelector />
         </div>
         <button onClick={() => onNavigate('dashboard')} className="btn-back">← Dashboard</button>
@@ -667,122 +588,4 @@ function ReportsPage({ onNavigate }) {
             </div>
 
             <h4>By Agent</h4>
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>Agent Name</th>
-                  <th>Payments</th>
-                  <th>Collection</th>
-                  <th>Avg Per Payment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(dailyReport.byAgent).map(([agent, data]) => (
-                  <tr key={agent}>
-                    <td>{agent}</td>
-                    <td>{data.count}</td>
-                    <td>₹{data.total.toLocaleString('en-IN')}</td>
-                    <td>₹{(data.total / data.count).toLocaleString('en-IN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {activeTab === 'agents' && agentPerformance && (
-          <div className="report-section">
-            <div className="report-header">
-              <h3>Agent Performance</h3>
-              <button 
-                className="btn-export"
-                onClick={handleExportAgentPerformance}
-              >
-                📥 Download Report ({exportFormat.toUpperCase()})
-              </button>
-            </div>
-
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>Accounts</th>
-                  <th>Recovery</th>
-                  <th>Avg/Account</th>
-                  <th>Payments Today</th>
-                  <th>Follow Ups</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentPerformance.map((agent) => (
-                  <tr key={agent.agentName}>
-                    <td>{agent.agentName}</td>
-                    <td>{agent.totalAccounts}</td>
-                    <td>₹{agent.totalRecovery.toLocaleString('en-IN')}</td>
-                    <td>₹{parseFloat(agent.avgRecoveryPerAccount).toLocaleString('en-IN')}</td>
-                    <td>{agent.paymentsToday}</td>
-                    <td>{agent.followUpsToday}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// MAIN APP
-// ============================================================================
-
-function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-
-  const handleLogin = (user) => {
-    setCurrentUser(user);
-    setCurrentPage('dashboard');
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setCurrentPage('dashboard');
-  };
-
-  const handleNavigate = (page) => {
-    setCurrentPage(page);
-  };
-
-  const handleSelectAccount = (customerId) => {
-    setSelectedCustomerId(customerId);
-    setCurrentPage('profile');
-  };
-
-  if (!currentUser) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
-  return (
-    <ProductProvider>
-      <div className="app">
-        {currentPage === 'dashboard' && (
-          <Dashboard user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} />
-        )}
-        {currentPage === 'accounts' && (
-          <AccountsPage user={currentUser} onNavigate={handleNavigate} onSelectAccount={handleSelectAccount} />
-        )}
-        {currentPage === 'search' && (
-          <SearchPage onNavigate={handleNavigate} onSelectAccount={handleSelectAccount} />
-        )}
-        {currentPage === 'reports' && (
-          <ReportsPage onNavigate={handleNavigate} />
-        )}
-      </div>
-    </ProductProvider>
-  );
-}
-
-export default App;
+            <table class
