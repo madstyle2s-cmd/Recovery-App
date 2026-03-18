@@ -330,6 +330,394 @@ function SearchPage({ onNavigate }) {
 
 function ReportsPage({ onNavigate }) {
   const { selectedProduct, productsLoaded } = useProduct();
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (productsLoaded && selectedProduct) {
+      loadReport();
+    }
+  }, [selectedProduct, productsLoaded]);
+
+  const loadReport = async () => {
+    setLoading(true);
+    const result = await API.call('getDailyCollectionReportByProduct', { productName: selectedProduct });
+    if (result.success) {
+      setReport(result.data);
+    }
+    setLoading(false);
+  };
+
+  if (loading) return <div className="page-loading">Loading reports...</div>;
+
+  return (
+    <div className="reports-page">
+      <header className="page-header">
+        <div>
+          <h1>Reports - {selectedProduct}</h1>
+          <ProductSelector />
+        </div>
+        <button onClick={() => onNavigate('dashboard')} className="btn-back">← Dashboard</button>
+      </header>
+
+      {report && (
+        <div className="report-section">
+          <div className="report-header">
+            <h3>Daily Collection Report</h3>
+          </div>
+
+          <div className="report-summary">
+            <div className="report-card">
+              <span>Total Payments</span>
+              <p>{report.totalPayments}</p>
+            </div>
+            <div className="report-card">
+              <span>Total Collection</span>
+              <p>₹{report.totalCollection.toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+
+          <h4>By Agent</h4>
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Agent Name</th>
+                <th>Payments</th>
+                <th>Collection</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(report.byAgent).map(([agent, data]) => (
+                <tr key={agent}>
+                  <td>{agent}</td>
+                  <td>{data.count}</td>
+                  <td>₹{data.total.toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+  };
+
+  return (
+    <ProductProvider>
+      <div className="app">
+        {currentPage === 'dashboard' && <Dashboard onNavigate={handleNavigate} />}
+        {currentPage === 'accounts' && <AccountsPage onNavigate={handleNavigate} />}
+        {currentPage === 'search' && <SearchPage onNavigate={handleNavigate} />}
+        {currentPage === 'reports' && <ReportsPage onNavigate={handleNavigate} />}
+      </div>
+    </ProductProvider>
+  );
+}
+
+export default App;
+      const result = await API.call('getAvailableProducts');
+      if (result.success && result.data.length > 0) {
+        setProducts(result.data);
+        setSelectedProduct(result.data[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    } finally {
+      setProductsLoaded(true);
+    }
+  };
+
+  return (
+    <ProductContext.Provider value={{ products, selectedProduct, setSelectedProduct, productsLoaded }}>
+      {children}
+    </ProductContext.Provider>
+  );
+}
+
+function useProduct() {
+  return React.useContext(ProductContext);
+}
+
+function ProductSelector() {
+  const { products, selectedProduct, setSelectedProduct } = useProduct();
+
+  if (products.length === 0) {
+    return <div className="product-selector">No products available</div>;
+  }
+
+  return (
+    <div className="product-selector">
+      <label>📦 Product:</label>
+      <select 
+        value={selectedProduct || ''} 
+        onChange={(e) => setSelectedProduct(e.target.value)}
+        className="product-select"
+      >
+        {products.map((product) => (
+          <option key={product} value={product}>
+            {product}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function Dashboard({ onNavigate }) {
+  const { selectedProduct, productsLoaded } = useProduct();
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (productsLoaded && selectedProduct) {
+      loadDashboard();
+    }
+  }, [selectedProduct, productsLoaded]);
+
+  const loadDashboard = async () => {
+    setLoading(true);
+    const result = await API.call('getDashboardSummaryByProduct', { 
+      productName: selectedProduct
+    });
+    if (result.success) {
+      setSummary(result.data);
+    }
+    setLoading(false);
+  };
+
+  if (loading) return <div className="page-loading">Loading dashboard...</div>;
+  if (!summary) return <div className="page-error">Failed to load dashboard</div>;
+
+  return (
+    <div className="dashboard-page">
+      <header className="app-header">
+        <div>
+          <h1>Recovery Dashboard</h1>
+          <ProductSelector />
+        </div>
+      </header>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-summary">
+          <div className="summary-card">
+            <h3>Total Accounts</h3>
+            <p className="summary-value">{summary.totalAccounts}</p>
+          </div>
+
+          <div className="summary-card">
+            <h3>Total Limit</h3>
+            <p className="summary-value">₹{summary.totalLimit.toLocaleString('en-IN')}</p>
+          </div>
+
+          <div className="summary-card">
+            <h3>Total Recovery</h3>
+            <p className="summary-value">₹{summary.totalRecovery.toLocaleString('en-IN')}</p>
+          </div>
+
+          <div className="summary-card">
+            <h3>Remaining Payoff</h3>
+            <p className="summary-value">₹{summary.remainingPayoff.toLocaleString('en-IN')}</p>
+          </div>
+        </div>
+
+        <div className="quick-actions">
+          <button onClick={() => onNavigate('accounts')} className="btn-action">📋 View All Accounts</button>
+          <button onClick={() => onNavigate('search')} className="btn-action">🔍 Search Customer</button>
+          <button onClick={() => onNavigate('reports')} className="btn-action">📈 Daily Reports</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountsPage({ onNavigate }) {
+  const { selectedProduct, productsLoaded } = useProduct();
+  const [accounts, setAccounts] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+
+  useEffect(() => {
+    if (productsLoaded && selectedProduct) {
+      loadAccounts();
+    }
+  }, [selectedProduct, productsLoaded]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [accounts, filterStatus]);
+
+  const loadAccounts = async () => {
+    const result = await API.call('getAccountsByProduct', { 
+      productName: selectedProduct
+    });
+    if (result.success) {
+      setAccounts(result.data);
+    }
+    setLoading(false);
+  };
+
+  const applyFilters = () => {
+    let result = accounts;
+    if (filterStatus !== 'ALL') {
+      result = result.filter(acc => acc.Status === filterStatus);
+    }
+    result.sort((a, b) => (a['A/C Name'] || '').localeCompare(b['A/C Name'] || ''));
+    setFiltered(result);
+  };
+
+  if (loading) return <div className="page-loading">Loading accounts...</div>;
+
+  return (
+    <div className="accounts-page">
+      <header className="page-header">
+        <div>
+          <h1>{selectedProduct} - All Accounts</h1>
+          <ProductSelector />
+        </div>
+        <button onClick={() => onNavigate('dashboard')} className="btn-back">← Dashboard</button>
+      </header>
+
+      <div className="filters-bar">
+        <div className="filter-group">
+          <label>Status:</label>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <option value="ALL">All</option>
+            <option value="NEW">New</option>
+            <option value="CONTACTED">Contacted</option>
+            <option value="PARTIAL">Partial</option>
+            <option value="SETTLED">Settled</option>
+            <option value="LEGAL">Legal</option>
+          </select>
+        </div>
+        <div className="filter-info">
+          Showing {filtered.length} of {accounts.length} accounts
+        </div>
+      </div>
+
+      <div className="accounts-grid">
+        {filtered.map((account) => (
+          <div key={account['Customer ID']} className="account-card">
+            <div className="card-header">
+              <h3>{account['A/C Name'] || 'Unknown'}</h3>
+              <span className={`status-badge status-${(account.Status || 'new').toLowerCase()}`}>
+                {account.Status || 'NEW'}
+              </span>
+            </div>
+
+            <div className="card-body">
+              <div className="card-row">
+                <span className="label">District:</span>
+                <span className="value">{account.District}</span>
+              </div>
+              <div className="card-row">
+                <span className="label">Phone:</span>
+                <span className="value">{account['Customer Phone']}</span>
+              </div>
+
+              <div className="card-financials">
+                <div className="financial-item">
+                  <span className="label">Limit</span>
+                  <span className="value">₹{parseFloat(account.Limit || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="financial-item">
+                  <span className="label">Paid</span>
+                  <span className="value">₹{parseFloat(account['Paid Amount'] || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="financial-item">
+                  <span className="label">Remaining</span>
+                  <span className="value">₹{(parseFloat(account['Pay off'] || 0) - parseFloat(account['Paid Amount'] || 0)).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SearchPage({ onNavigate }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setLoading(true);
+    const result = await API.call('searchAccountsAllProducts', { query });
+    if (result.success) {
+      setResults(result.data);
+    }
+    setSearched(true);
+    setLoading(false);
+  };
+
+  return (
+    <div className="search-page">
+      <header className="page-header">
+        <h1>Search Customer (All Products)</h1>
+        <button onClick={() => onNavigate('dashboard')} className="btn-back">← Dashboard</button>
+      </header>
+
+      <form onSubmit={handleSearch} className="search-form">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, phone, ID..."
+          autoFocus
+        />
+        <button type="submit" disabled={loading} className="btn-search">
+          {loading ? '🔍 Searching...' : '🔍 Search'}
+        </button>
+      </form>
+
+      {searched && (
+        <div className="search-results">
+          <p className="result-count">Found {results.length} results</p>
+          {results.length > 0 ? (
+            <div className="accounts-grid">
+              {results.map((account) => (
+                <div key={account['Customer ID']} className="account-card">
+                  <div className="card-header">
+                    <h3>{account['A/C Name']}</h3>
+                    <span className="product-tag">{account['_Product']}</span>
+                  </div>
+                  <div className="card-body">
+                    <div className="card-row">
+                      <span className="label">Phone:</span>
+                      <span className="value">{account['Customer Phone']}</span>
+                    </div>
+                    <div className="card-row">
+                      <span className="label">Remaining:</span>
+                      <span className="value">₹{(parseFloat(account['Pay off']) - parseFloat(account['Paid Amount'])).toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">No customers found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReportsPage({ onNavigate }) {
+  const { selectedProduct, productsLoaded } = useProduct();
   const [dailyReport, setDailyReport] = useState(null);
   const [agentPerformance, setAgentPerformance] = useState(null);
   const [loading, setLoading] = useState(true);
