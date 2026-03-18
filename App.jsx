@@ -1,18 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// ============================================================================
-// CONFIG
-// ============================================================================
-
 const CONFIG = {
   SHEET_ID: '16O97Xr0T95Br21fmoGF1GtbeV0q5AujbddsbADgcMnI',
   GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbz8e5iCbglsHe0Y73T-wTkz6JMdkIP2nZ0HTp1e9IvfdlgS8adAMdCUU1SzpvvSVtf63A/userweb'
 };
-
-// ============================================================================
-// API HELPER
-// ============================================================================
 
 const API = {
   async call(action, params = {}) {
@@ -31,10 +23,6 @@ const API = {
     }
   }
 };
-
-// ============================================================================
-// PRODUCT CONTEXT
-// ============================================================================
 
 const ProductContext = React.createContext();
 
@@ -72,10 +60,6 @@ function useProduct() {
   return React.useContext(ProductContext);
 }
 
-// ============================================================================
-// PRODUCT SELECTOR
-// ============================================================================
-
 function ProductSelector() {
   const { products, selectedProduct, setSelectedProduct } = useProduct();
 
@@ -100,10 +84,6 @@ function ProductSelector() {
     </div>
   );
 }
-
-// ============================================================================
-// DASHBOARD PAGE
-// ============================================================================
 
 function Dashboard({ onNavigate }) {
   const { selectedProduct, productsLoaded } = useProduct();
@@ -176,10 +156,6 @@ function Dashboard({ onNavigate }) {
     </div>
   );
 }
-
-// ============================================================================
-// ACCOUNTS LIST PAGE
-// ============================================================================
 
 function AccountsPage({ onNavigate }) {
   const { selectedProduct, productsLoaded } = useProduct();
@@ -298,10 +274,6 @@ function AccountsPage({ onNavigate }) {
   );
 }
 
-// ============================================================================
-// SEARCH PAGE
-// ============================================================================
-
 function SearchPage({ onNavigate }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -379,10 +351,6 @@ function SearchPage({ onNavigate }) {
     </div>
   );
 }
-
-// ============================================================================
-// REPORTS PAGE
-// ============================================================================
 
 function ReportsPage({ onNavigate }) {
   const { selectedProduct, productsLoaded } = useProduct();
@@ -525,10 +493,6 @@ function ReportsPage({ onNavigate }) {
   );
 }
 
-// ============================================================================
-// MAIN APP
-// ============================================================================
-
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
 
@@ -549,4 +513,4 @@ function App() {
 }
 
 export default App;
-              
+            
