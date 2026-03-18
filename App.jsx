@@ -7,7 +7,7 @@ import './App.css';
 
 const CONFIG = {
   SHEET_ID: '16O97Xr0T95Br21fmoGF1GtbeV0q5AujbddsbADgcMnI',
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbyP0H8r9nmrohNjX8FrefKA0vwZOFeWlADDgnx6nETgwjW9ECCuKSpLPIJWV0mrXZdgvA/userweb'
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbz8e5iCbglsHe0Y73T-wTkz6JMdkIP2nZ0HTp1e9IvfdlgS8adAMdCUU1SzpvvSVtf63A/userweb'
 };
 
 // ============================================================================
