@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const CONFIG = {
-  SHEET_ID: '16O97Xr0T95Br21fmoGF1GtbeV0q5AujbddsbADgcMnI',
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbz8e5iCbglsHe0Y73T-wTkz6JMdkIP2nZ0HTp1e9IvfdlgS8adAMdCUU1SzpvvSVtf63A/userweb'
+  SHEET_ID: '1fJwyS7ohuanJv1X933zsAJxd6mlt8XUnre8f6mqBASk',
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbz_sgxt53KHFFBVPJMg20JNpVsRp5NBbUyZ0NVQ1J5xs0PRKSwZBpXmaIjixVGHH6F6qQ/userweb'
 };
 
 const API = {
@@ -513,4 +513,3 @@ function App() {
 }
 
 export default App;
-            
