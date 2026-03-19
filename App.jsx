@@ -3,7 +3,7 @@ import './App.css';
 
 const CONFIG = {
   SHEET_ID: '1fJwyS7ohuanJv1X933zsAJxd6mlt8XUnre8f6mqBASk',
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbwk_QmgSznV5ZkxScZ6J4lRGmbhjtaQmpBSRDnuwdlCOjzPENiO-kdQaaD23F6lq1eu/userweb'
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwk_QmgSznV5ZkxScZ6J4lRGmbhjtaQmpBSRDnuwdlCOjzPENiO-kdQaaD23F6lq1eu/exec'
 };
 
 const API = {
@@ -523,4 +523,4 @@ function App() {
 }
 
 export default App;
-      
+          
