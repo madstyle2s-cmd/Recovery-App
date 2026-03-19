@@ -22,12 +22,16 @@ const API = {
   }
 };
 
-const ProductContext = React.createContext();
+// Context & Providers
+const AppContext = React.createContext();
 
-function ProductProvider({ children }) {
+function AppProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productsLoaded, setProductsLoaded] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [userProfile, setUserProfile] = useState(JSON.parse(localStorage.getItem('userProfile') || '{"name":"Agent","email":"agent@recovery.com"}'));
 
   useEffect(() => {
     loadProducts();
@@ -47,565 +51,521 @@ function ProductProvider({ children }) {
     }
   };
 
+  const addNotification = (message, type = 'success', duration = 3000) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, duration);
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
+
   return (
-    <ProductContext.Provider value={{ products, selectedProduct, setSelectedProduct, productsLoaded }}>
+    <AppContext.Provider value={{
+      products, selectedProduct, setSelectedProduct, productsLoaded,
+      notifications, addNotification,
+      theme, toggleTheme,
+      userProfile, setUserProfile
+    }}>
       {children}
-    </ProductContext.Provider>
+    </AppContext.Provider>
   );
 }
 
-function useProduct() {
-  return React.useContext(ProductContext);
+function useApp() {
+  return React.useContext(AppContext);
 }
 
-// Account Details Modal
-function AccountDetailsModal({ account, onClose }) {
-  if (!account) return null;
+// Notification System
+function NotificationCenter() {
+  const { notifications } = useApp();
+  return (
+    <div className="notification-center">
+      {notifications.map(notif => (
+        <div key={notif.id} className={`notification notification-${notif.type}`}>
+          {notif.message}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  const remaining = Math.max(0, (parseFloat(account['Pay off']) || 0) - (parseFloat(account['Paid Amount']) || 0));
-  const recoveryPercent = (parseFloat(account['Pay off']) || 0) > 0 
-    ? ((parseFloat(account['Paid Amount']) || 0) / (parseFloat(account['Pay off']) || 0) * 100).toFixed(1)
-    : 0;
+// Edit Account Modal
+function EditAccountModal({ account, onClose, onSave }) {
+  const { addNotification } = useApp();
+  const [formData, setFormData] = useState(account || {});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+    addNotification('Account updated successfully!', 'success');
+    onClose();
+  };
+
+  if (!account) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{account['A/C Name']}</h2>
+          <h2>✏️ Edit Account</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        <div className="modal-body">
-          <div className="section">
-            <h3>Account Information</h3>
-            <div className="detail-row">
-              <span className="label">A/C Number:</span>
-              <span className="value">{account['A/C Number'] || 'N/A'}</span>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <h3>Basic Information</h3>
+            <div className="form-group">
+              <label>Customer Name</label>
+              <input type="text" name="A/C Name" value={formData['A/C Name'] || ''} onChange={handleChange} />
             </div>
-            <div className="detail-row">
-              <span className="label">Customer ID:</span>
-              <span className="value">{account['Customer ID'] || 'N/A'}</span>
+            <div className="form-group">
+              <label>Phone</label>
+              <input type="tel" name="Customer Phone" value={formData['Customer Phone'] || ''} onChange={handleChange} />
             </div>
-            <div className="detail-row">
-              <span className="label">District:</span>
-              <span className="value">{account.District || 'N/A'}</span>
+            <div className="form-group">
+              <label>District</label>
+              <input type="text" name="District" value={formData.District || ''} onChange={handleChange} />
             </div>
-            <div className="detail-row">
-              <span className="label">Status:</span>
-              <span className="value status-badge" style={{ display: 'inline-block' }}>
-                {account.Status || 'NEW'}
-              </span>
-            </div>
-          </div>
-
-          <div className="section">
-            <h3>Contact Details</h3>
-            <div className="detail-row">
-              <span className="label">Phone:</span>
-              <span className="value">{account['Customer Phone'] || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="label">Agent:</span>
-              <span className="value">{account['Agent Name'] || 'N/A'}</span>
+            <div className="form-group">
+              <label>Status</label>
+              <select name="Status" value={formData.Status || ''} onChange={handleChange}>
+                <option value="NEW">New</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="SETTLED">Settled</option>
+                <option value="LEGAL">Legal</option>
+              </select>
             </div>
           </div>
 
-          <div className="section">
-            <h3>Financial Summary</h3>
-            <div className="detail-row">
-              <span className="label">Credit Limit:</span>
-              <span className="value">₹{(parseFloat(account.Limit) || 0).toLocaleString('en-IN')}</span>
+          <div className="form-section">
+            <h3>Agent Assignment</h3>
+            <div className="form-group">
+              <label>Agent Name</label>
+              <input type="text" name="Agent Name" value={formData['Agent Name'] || ''} onChange={handleChange} />
             </div>
-            <div className="detail-row">
-              <span className="label">Total Payoff:</span>
-              <span className="value">₹{(parseFloat(account['Pay off']) || 0).toLocaleString('en-IN')}</span>
-            </div>
-            <div className="detail-row">
-              <span className="label">Paid Amount:</span>
-              <span className="value" style={{ color: '#10b981' }}>₹{(parseFloat(account['Paid Amount']) || 0).toLocaleString('en-IN')}</span>
-            </div>
-            <div className="detail-row">
-              <span className="label">Remaining:</span>
-              <span className="value" style={{ color: '#ef4444', fontWeight: '700' }}>₹{remaining.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="detail-row">
-              <span className="label">Recovery %:</span>
-              <span className="value">{recoveryPercent}%</span>
+            <div className="form-group">
+              <label>Next Follow Up</label>
+              <input type="date" name="Next Follow Up" value={formData['Next Follow Up'] || ''} onChange={handleChange} />
             </div>
           </div>
 
-          <div className="section">
-            <h3>Additional Information</h3>
-            <div className="detail-row">
-              <span className="label">Last Update:</span>
-              <span className="value">{account['Last Update'] || 'N/A'}</span>
+          <div className="form-section">
+            <h3>Notes</h3>
+            <div className="form-group">
+              <textarea name="Notes" value={formData.Notes || ''} onChange={handleChange} placeholder="Add notes..." rows="4"></textarea>
             </div>
-            <div className="detail-row">
-              <span className="label">Next Follow Up:</span>
-              <span className="value">{account['Next Follow Up'] || 'N/A'}</span>
-            </div>
-            {account.Notes && (
-              <div className="detail-row">
-                <span className="label">Notes:</span>
-                <span className="value">{account.Notes}</span>
-              </div>
-            )}
           </div>
-        </div>
 
-        <div className="modal-actions">
-          <button className="btn-call" onClick={() => window.location.href = `tel:${account['Customer Phone']}`}>
-            📞 Call Customer
-          </button>
-          <button className="btn-primary" onClick={onClose}>Close</button>
-        </div>
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">✅ Save Changes</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-// Dashboard
-function Dashboard({ onNavigate }) {
-  const { selectedProduct, productsLoaded } = useProduct();
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Add Payment Modal
+function AddPaymentModal({ account, onClose, onSave }) {
+  const { addNotification } = useApp();
+  const [payment, setPayment] = useState({
+    'Customer ID': account?.['Customer ID'],
+    'Payment Amount': '',
+    'Payment Date': new Date().toISOString().split('T')[0],
+    'Agent Name': account?.['Agent Name'],
+    'Note': ''
+  });
 
-  useEffect(() => {
-    if (productsLoaded && selectedProduct) {
-      loadDashboard();
-    }
-  }, [selectedProduct, productsLoaded]);
-
-  const loadDashboard = async () => {
-    setLoading(true);
-    const result = await API.call('getDashboardSummaryByProduct', { productName: selectedProduct });
-    if (result.success && result.data) setSummary(result.data);
-    setLoading(false);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setPayment(prev => ({ ...prev, [name]: value }));
   };
 
-  if (loading) return <div className="screen active"><div style={{ textAlign: 'center', padding: '2rem' }}>⏳ Loading...</div></div>;
-  if (!summary) return <div className="screen active"><div style={{ textAlign: 'center', padding: '2rem' }}>❌ No data</div></div>;
-
-  return (
-    <div className="screen active">
-      <div className="dashboard-header">
-        <div>
-          <h1>Recovery Dashboard</h1>
-          <div className="welcome-text">Welcome back! Here's your recovery status</div>
-        </div>
-      </div>
-
-      <div className="summary-grid">
-        <div className="summary-card">
-          <h3>Total Accounts</h3>
-          <div className="summary-value">{summary.totalAccounts}</div>
-          <div className="summary-detail">Active accounts</div>
-        </div>
-
-        <div className="summary-card">
-          <h3>Total Limit</h3>
-          <div className="summary-value">₹{(summary.totalLimit / 100000).toFixed(1)}L</div>
-          <div className="summary-detail">Credit limit</div>
-        </div>
-
-        <div className="summary-card">
-          <h3>Total Recovery</h3>
-          <div className="summary-value">₹{(summary.totalRecovery / 100000).toFixed(1)}L</div>
-          <div className="summary-detail">Recovered</div>
-        </div>
-
-        <div className="summary-card">
-          <h3>Remaining</h3>
-          <div className="summary-value">₹{(summary.remainingPayoff / 100000).toFixed(1)}L</div>
-          <div className="summary-detail">Outstanding</div>
-        </div>
-      </div>
-
-      <div className="quick-actions">
-        <button className="quick-btn" onClick={() => onNavigate('accounts')}>📋 View Accounts</button>
-        <button className="quick-btn" onClick={() => onNavigate('search')}>🔍 Search</button>
-        <button className="quick-btn" onClick={() => onNavigate('reports')}>📊 Reports</button>
-      </div>
-    </div>
-  );
-}
-
-// Accounts Page
-function AccountsPage({ onNavigate }) {
-  const { selectedProduct, productsLoaded } = useProduct();
-  const [accounts, setAccounts] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [selectedAccount, setSelectedAccount] = useState(null);
-
-  useEffect(() => {
-    if (productsLoaded && selectedProduct) {
-      loadAccounts();
-    }
-  }, [selectedProduct, productsLoaded]);
-
-  useEffect(() => {
-    let result = accounts;
-    if (filterStatus !== 'ALL') {
-      result = result.filter(acc => acc.Status === filterStatus);
-    }
-    result.sort((a, b) => (a['A/C Name'] || '').localeCompare(b['A/C Name'] || ''));
-    setFiltered(result);
-  }, [accounts, filterStatus]);
-
-  const loadAccounts = async () => {
-    setLoading(true);
-    const result = await API.call('getAccountsByProduct', { productName: selectedProduct });
-    if (result.success && result.data) setAccounts(result.data);
-    setLoading(false);
-  };
-
-  if (loading) return <div className="screen active"><div style={{ textAlign: 'center', padding: '2rem' }}>⏳ Loading...</div></div>;
-
-  return (
-    <div className="screen active">
-      <div className="dashboard-header">
-        <h1>{selectedProduct} Accounts</h1>
-      </div>
-
-      <div className="filters-bar">
-        <div className="filter-group">
-          <label>Status:</label>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="ALL">All</option>
-            <option value="NEW">New</option>
-            <option value="CONTACTED">Contacted</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="SETTLED">Settled</option>
-            <option value="LEGAL">Legal</option>
-          </select>
-        </div>
-        <div style={{ marginLeft: 'auto', fontSize: '14px', color: '#6b7280' }}>
-          {filtered.length} of {accounts.length}
-        </div>
-      </div>
-
-      <div className="accounts-grid">
-        {filtered.map((account) => {
-          const remaining = Math.max(0, (parseFloat(account['Pay off']) || 0) - (parseFloat(account['Paid Amount']) || 0));
-          return (
-            <div key={account['Customer ID']} className="account-card">
-              <div className="card-header">
-                <h3>{account['A/C Name'] || 'Unknown'}</h3>
-                <span className={`status-badge status-${(account.Status || 'new').toLowerCase()}`}>
-                  {account.Status || 'NEW'}
-                </span>
-              </div>
-
-              <div className="card-body">
-                <div className="card-row">
-                  <span className="label">Phone:</span>
-                  <span className="value">{account['Customer Phone'] || 'N/A'}</span>
-                </div>
-                <div className="card-row">
-                  <span className="label">District:</span>
-                  <span className="value">{account.District || 'N/A'}</span>
-                </div>
-                <div className="card-row">
-                  <span className="label">Agent:</span>
-                  <span className="value">{account['Agent Name'] || 'N/A'}</span>
-                </div>
-
-                <div className="card-financials">
-                  <div className="financial-item">
-                    <span className="label">Limit</span>
-                    <span className="value">₹{(parseFloat(account.Limit) || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="label">Paid</span>
-                    <span className="value">₹{(parseFloat(account['Paid Amount']) || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="label">Remaining</span>
-                    <span className="value">₹{remaining.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-actions">
-                <button className="btn-open" onClick={() => setSelectedAccount(account)}>
-                  📋 Details
-                </button>
-                <button className="btn-call" onClick={() => window.location.href = `tel:${account['Customer Phone']}`}>
-                  📞 Call
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {selectedAccount && (
-        <AccountDetailsModal account={selectedAccount} onClose={() => setSelectedAccount(null)} />
-      )}
-    </div>
-  );
-}
-
-// Search Page
-function SearchPage({ onNavigate }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-
-  const handleSearch = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
-
-    setSearching(true);
-    const result = await API.call('searchAccountsAllProducts', { query });
-    if (result.success && result.data) setResults(result.data);
-    setSearched(true);
-    setSearching(false);
-  };
-
-  return (
-    <div className="screen active">
-      <div className="dashboard-header">
-        <h1>🔍 Search Customers</h1>
-      </div>
-
-      <form className="search-form" onSubmit={handleSearch}>
-        <input 
-          type="text" 
-          value={query} 
-          onChange={(e) => setQuery(e.target.value)} 
-          placeholder="Search by name, phone, ID..." 
-          autoFocus
-        />
-        <button type="submit" className="btn-search">{searching ? '⏳...' : '🔍'}</button>
-      </form>
-
-      {searched && (
-        <div>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>Found {results.length} results</p>
-          {results.length > 0 ? (
-            <div className="accounts-grid">
-              {results.map((account) => {
-                const remaining = Math.max(0, (parseFloat(account['Pay off']) || 0) - (parseFloat(account['Paid Amount']) || 0));
-                return (
-                  <div key={account['Customer ID']} className="account-card">
-                    <div className="card-header">
-                      <h3>{account['A/C Name']}</h3>
-                      <span style={{ fontSize: '12px', background: '#dbeafe', color: '#1e40af', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
-                        {account['_Product']}
-                      </span>
-                    </div>
-                    <div className="card-body">
-                      <div className="card-row">
-                        <span className="label">Phone:</span>
-                        <span className="value">{account['Customer Phone']}</span>
-                      </div>
-                      <div className="card-financials">
-                        <div className="financial-item">
-                          <span className="label">Limit</span>
-                          <span className="value">₹{(parseFloat(account.Limit) || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="financial-item">
-                          <span className="label">Paid</span>
-                          <span className="value">₹{(parseFloat(account['Paid Amount']) || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="financial-item">
-                          <span className="label">Remaining</span>
-                          <span className="value">₹{remaining.toLocaleString('en-IN')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="card-actions">
-                      <button className="btn-open" onClick={() => setSelectedAccount(account)}>Details</button>
-                      <button className="btn-call" onClick={() => window.location.href = `tel:${account['Customer Phone']}`}>Call</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state">No customers found</div>
-          )}
-        </div>
-      )}
-
-      {selectedAccount && (
-        <AccountDetailsModal account={selectedAccount} onClose={() => setSelectedAccount(null)} />
-      )}
-    </div>
-  );
-}
-
-// Reports Page
-function ReportsPage({ onNavigate }) {
-  const { selectedProduct, productsLoaded } = useProduct();
-  const [report, setReport] = useState(null);
-  const [agents, setAgents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('daily');
-
-  useEffect(() => {
-    if (productsLoaded && selectedProduct) {
-      loadReports();
+    if (!payment['Payment Amount']) {
+      addNotification('Please enter payment amount', 'error');
+      return;
     }
-  }, [selectedProduct, productsLoaded]);
-
-  const loadReports = async () => {
-    setLoading(true);
-    const dailyResult = await API.call('getDailyCollectionReportByProduct', { productName: selectedProduct });
-    const agentResult = await API.call('getAgentPerformanceByProduct', { productName: selectedProduct });
-    
-    if (dailyResult.success && dailyResult.data) setReport(dailyResult.data);
-    if (agentResult.success && agentResult.data) setAgents(agentResult.data);
-    setLoading(false);
+    onSave(payment);
+    addNotification('Payment added successfully!', 'success');
+    onClose();
   };
 
-  if (loading) return <div className="screen active"><div style={{ textAlign: 'center', padding: '2rem' }}>⏳ Loading...</div></div>;
+  if (!account) return null;
 
   return (
-    <div className="screen active">
-      <div className="dashboard-header">
-        <h1>📊 Reports - {selectedProduct}</h1>
-      </div>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>💰 Add Payment</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
 
-      <div className="tabs">
-        <button 
-          className={`tab ${activeTab === 'daily' ? 'active' : ''}`}
-          onClick={() => setActiveTab('daily')}
-        >
-          Daily Collection
-        </button>
-        <button 
-          className={`tab ${activeTab === 'agents' ? 'active' : ''}`}
-          onClick={() => setActiveTab('agents')}
-        >
-          Agent Performance
-        </button>
-      </div>
-
-      {activeTab === 'daily' && report && (
-        <div>
-          <div className="report-summary">
-            <div className="report-card">
-              <span>Total Payments</span>
-              <p>{report.totalPayments || 0}</p>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>Customer: {account['A/C Name']}</label>
             </div>
-            <div className="report-card">
-              <span>Total Collection</span>
-              <p>₹{(report.totalCollection || 0).toLocaleString('en-IN')}</p>
+            <div className="form-group">
+              <label>Payment Amount *</label>
+              <input type="number" name="Payment Amount" value={payment['Payment Amount']} onChange={handleChange} placeholder="৳0.00" required />
+            </div>
+            <div className="form-group">
+              <label>Payment Date</label>
+              <input type="date" name="Payment Date" value={payment['Payment Date']} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Reference/Note</label>
+              <textarea name="Note" value={payment['Note']} onChange={handleChange} placeholder="Payment reference..." rows="3"></textarea>
             </div>
           </div>
 
-          {report.byAgent && Object.keys(report.byAgent).length > 0 && (
-            <div className="tab-content">
-              <h3>By Agent</h3>
-              <div className="table-wrapper">
-                <table className="report-table">
-                  <thead>
-                    <tr>
-                      <th>Agent Name</th>
-                      <th>Payments</th>
-                      <th>Collection</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(report.byAgent).map(([agent, data]) => (
-                      <tr key={agent}>
-                        <td>{agent}</td>
-                        <td>{data.count}</td>
-                        <td>₹{data.total.toLocaleString('en-IN')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'agents' && agents && agents.length > 0 && (
-        <div className="tab-content">
-          <h3>Agent Performance</h3>
-          <div className="table-wrapper">
-            <table className="report-table">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>Accounts</th>
-                  <th>Recovery</th>
-                  <th>Avg</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agents.map((agent) => (
-                  <tr key={agent.agentName}>
-                    <td>{agent.agentName}</td>
-                    <td>{agent.totalAccounts}</td>
-                    <td>₹{agent.totalRecovery.toLocaleString('en-IN')}</td>
-                    <td>₹{parseFloat(agent.avgRecoveryPerAccount).toLocaleString('en-IN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">✅ Add Payment</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Main App
-function App() {
-  const { selectedProduct, products } = useProduct();
-  const [currentPage, setCurrentPage] = useState('dashboard');
-
-  return (
-    <div className="app-container">
-      <div className="nav-tabs">
-        <div className="nav-content">
-          <select 
-            value={selectedProduct || ''} 
-            onChange={(e) => {}} 
-            className="product-selector"
-            style={{ marginRight: 'auto' }}
-          >
-            {products.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-          
-          <button className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
-            📊 Dashboard
-          </button>
-          <button className={`nav-btn ${currentPage === 'accounts' ? 'active' : ''}`} onClick={() => setCurrentPage('accounts')}>
-            📋 Accounts
-          </button>
-          <button className={`nav-btn ${currentPage === 'search' ? 'active' : ''}`} onClick={() => setCurrentPage('search')}>
-            🔍 Search
-          </button>
-          <button className={`nav-btn ${currentPage === 'reports' ? 'active' : ''}`} onClick={() => setCurrentPage('reports')}>
-            📊 Reports
-          </button>
-        </div>
-      </div>
-
-      <div className="content-wrapper">
-        {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
-        {currentPage === 'accounts' && <AccountsPage onNavigate={setCurrentPage} />}
-        {currentPage === 'search' && <SearchPage onNavigate={setCurrentPage} />}
-        {currentPage === 'reports' && <ReportsPage onNavigate={setCurrentPage} />}
+        </form>
       </div>
     </div>
   );
 }
 
-export default function AppWithProvider() {
+// Add Note Modal
+function AddNoteModal({ account, onClose, onSave }) {
+  const { addNotification } = useApp();
+  const [note, setNote] = useState({
+    content: '',
+    category: 'call',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNote(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!note.content) {
+      addNotification('Please enter note content', 'error');
+      return;
+    }
+    onSave(note);
+    addNotification('Note added successfully!', 'success');
+    onClose();
+  };
+
+  if (!account) return null;
+
   return (
-    <ProductProvider>
-      <App />
-    </ProductProvider>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>📝 Add Follow-up Note</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>Customer: {account['A/C Name']}</label>
+            </div>
+            <div className="form-group">
+              <label>Category</label>
+              <select name="category" value={note.category} onChange={handleChange}>
+                <option value="call">Call</option>
+                <option value="visit">Visit</option>
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Date</label>
+              <input type="date" name="date" value={note.date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Note Content *</label>
+              <textarea name="content" value={note.content} onChange={handleChange} placeholder="Enter your note..." rows="5" required></textarea>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">✅ Save Note</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
+
+// Call Log Modal
+function CallLogModal({ account, onClose, onSave }) {
+  const { addNotification } = useApp();
+  const [callLog, setCallLog] = useState({
+    date: new Date().toISOString().split('T')[0],
+    outcome: 'no-answer',
+    duration: '0',
+    nextFollowUp: '',
+    notes: ''
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCallLog(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(callLog);
+    addNotification('Call log saved successfully!', 'success');
+    onClose();
+  };
+
+  if (!account) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>📞 Call Log</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>Customer: {account['A/C Name']}</label>
+            </div>
+            <div className="form-group">
+              <label>Call Date</label>
+              <input type="date" name="date" value={callLog.date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Call Outcome</label>
+              <select name="outcome" value={callLog.outcome} onChange={handleChange}>
+                <option value="answered">Answered</option>
+                <option value="no-answer">No Answer</option>
+                <option value="busy">Busy</option>
+                <option value="wrong-number">Wrong Number</option>
+                <option value="agreed-payment">Agreed to Payment</option>
+                <option value="promised">Promised to Pay</option>
+                <option value="not-interested">Not Interested</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Duration (minutes)</label>
+              <input type="number" name="duration" value={callLog.duration} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Next Follow-up Date</label>
+              <input type="date" name="nextFollowUp" value={callLog.nextFollowUp} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Call Notes</label>
+              <textarea name="notes" value={callLog.notes} onChange={handleChange} rows="3"></textarea>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">✅ Save Log</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Agent Assignment Modal
+function AgentAssignmentModal({ account, onClose, onSave }) {
+  const { addNotification } = useApp();
+  const [assignment, setAssignment] = useState({
+    agent: account?.['Agent Name'] || '',
+    date: new Date().toISOString().split('T')[0],
+    reason: ''
+  });
+
+  const agents = ['Shibly', 'Agent 2', 'Agent 3', 'Agent 4'];
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setAssignment(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(assignment);
+    addNotification('Agent assigned successfully!', 'success');
+    onClose();
+  };
+
+  if (!account) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>👤 Assign Agent</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>Account: {account['A/C Name']}</label>
+            </div>
+            <div className="form-group">
+              <label>Assign to Agent *</label>
+              <select name="agent" value={assignment.agent} onChange={handleChange} required>
+                <option value="">Select Agent</option>
+                {agents.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Assignment Date</label>
+              <input type="date" name="date" value={assignment.date} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Reason for Assignment</label>
+              <textarea name="reason" value={assignment.reason} onChange={handleChange} rows="3"></textarea>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">✅ Assign</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Send SMS Modal
+function SendSMSModal({ account, onClose, onSend }) {
+  const { addNotification } = useApp();
+  const [sms, setSMS] = useState({
+    template: 'reminder',
+    message: '',
+    phone: account?.['Customer Phone'] || ''
+  });
+
+  const templates = {
+    reminder: 'Dear {name}, this is a reminder to make your payment. Contact us for details.',
+    payment: 'Thank you {name}! We received your payment of ৳{amount}. Thank you!',
+    followup: 'Hi {name}, following up on your account. Please call us at your earliest convenience.',
+    custom: ''
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setSMS(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSend(sms);
+    addNotification('SMS sent successfully!', 'success');
+    onClose();
+  };
+
+  if (!account) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>💬 Send SMS</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>To: {account['A/C Name']} ({sms.phone})</label>
+            </div>
+            <div className="form-group">
+              <label>Template</label>
+              <select name="template" value={sms.template} onChange={(e) => {
+                setSMS(prev => ({ ...prev, template: e.target.value, message: templates[e.target.value] }));
+              }}>
+                <option value="reminder">Reminder</option>
+                <option value="payment">Payment Confirmation</option>
+                <option value="followup">Follow-up</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Message</label>
+              <textarea name="message" value={sms.message} onChange={handleChange} rows="4" required></textarea>
+              <small>{sms.message.length}/160 characters</small>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="submit" className="btn-primary">📤 Send SMS</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// WhatsApp Modal
+function WhatsAppModal({ account, onClose, onSend }) {
+  const { addNotification } = useApp();
+  const [whatsapp, setWhatsapp] = useState({
+    message: 'Hi, this is regarding your account. Please contact us for details.',
+    phone: account?.['Customer Phone'] || ''
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setWhatsapp(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const phoneNumber = whatsapp.phone.replace(/\D/g, '');
+    const message = encodeURIComponent(whatsapp.message);
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`);
+    addNotification('Opening WhatsApp...', 'info');
+    onClose();
+  };
+
+  if (!account) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>📲 WhatsApp Message</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-section">
+            <div className="form-group">
+              <label>To: {account['A/C Name']}</label>
+            </div>
+            <div className="form-group">
+              <label>Phone Number</label>
+       
