@@ -3,12 +3,13 @@ import './App.css';
 
 const CONFIG = {
   SHEET_ID: '1fJwyS7ohuanJv1X933zsAJxd6mlt8XUnre8f6mqBASk',
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbz_sgxt53KHFFBVPJMg20JNpVsRp5NBbUyZ0NVQ1J5xs0PRKSwZBpXmaIjixVGHH6F6qQ/userweb'
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/d/AKfycbwk_QmgSznV5ZkxScZ6J4lRGmbhjtaQmpBSRDnuwdlCOjzPENiO-kdQaaD23F6lq1eu/userweb'
 };
 
 const API = {
   async call(action, params = {}) {
     try {
+      console.log('Calling API:', action, params);
       const response = await fetch(CONFIG.GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ action, ...params })
@@ -16,9 +17,11 @@ const API = {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      console.log('API Response:', action, data);
+      return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('API Error:', action, error);
       return { success: false, error: error.message };
     }
   }
@@ -37,10 +40,15 @@ function ProductProvider({ children }) {
 
   const loadProducts = async () => {
     try {
+      console.log('Loading products...');
       const result = await API.call('getAvailableProducts');
+      console.log('Products result:', result);
       if (result.success && result.data && result.data.length > 0) {
         setProducts(result.data);
         setSelectedProduct(result.data[0]);
+        console.log('Products loaded:', result.data);
+      } else {
+        console.error('No products returned or success is false');
       }
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -100,13 +108,15 @@ function Dashboard({ onNavigate }) {
   const loadDashboard = async () => {
     setLoading(true);
     setError(null);
+    console.log('Loading dashboard for:', selectedProduct);
     const result = await API.call('getDashboardSummaryByProduct', { 
       productName: selectedProduct
     });
+    console.log('Dashboard result:', result);
     if (result.success && result.data) {
       setSummary(result.data);
     } else {
-      setError('Failed to load dashboard data');
+      setError(result.error || 'Failed to load dashboard data');
     }
     setLoading(false);
   };
@@ -513,3 +523,4 @@ function App() {
 }
 
 export default App;
+      
