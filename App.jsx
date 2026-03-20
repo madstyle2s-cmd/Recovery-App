@@ -22,7 +22,6 @@ const API = {
   }
 };
 
-// Context & Providers
 const AppContext = React.createContext();
 
 function AppProvider({ children }) {
@@ -81,7 +80,6 @@ function useApp() {
   return React.useContext(AppContext);
 }
 
-// Notification System
 function NotificationCenter() {
   const { notifications } = useApp();
   return (
@@ -95,7 +93,6 @@ function NotificationCenter() {
   );
 }
 
-// Edit Account Modal
 function EditAccountModal({ account, onClose, onSave }) {
   const { addNotification } = useApp();
   const [formData, setFormData] = useState(account || {});
@@ -178,7 +175,6 @@ function EditAccountModal({ account, onClose, onSave }) {
   );
 }
 
-// Add Payment Modal
 function AddPaymentModal({ account, onClose, onSave }) {
   const { addNotification } = useApp();
   const [payment, setPayment] = useState({
@@ -244,7 +240,6 @@ function AddPaymentModal({ account, onClose, onSave }) {
   );
 }
 
-// Add Note Modal
 function AddNoteModal({ account, onClose, onSave }) {
   const { addNotification } = useApp();
   const [note, setNote] = useState({
@@ -315,7 +310,6 @@ function AddNoteModal({ account, onClose, onSave }) {
   );
 }
 
-// Call Log Modal
 function CallLogModal({ account, onClose, onSave }) {
   const { addNotification } = useApp();
   const [callLog, setCallLog] = useState({
@@ -393,7 +387,6 @@ function CallLogModal({ account, onClose, onSave }) {
   );
 }
 
-// Agent Assignment Modal
 function AgentAssignmentModal({ account, onClose, onSave }) {
   const { addNotification } = useApp();
   const [assignment, setAssignment] = useState({
@@ -458,7 +451,6 @@ function AgentAssignmentModal({ account, onClose, onSave }) {
   );
 }
 
-// Send SMS Modal
 function SendSMSModal({ account, onClose, onSend }) {
   const { addNotification } = useApp();
   const [sms, setSMS] = useState({
@@ -529,7 +521,6 @@ function SendSMSModal({ account, onClose, onSend }) {
   );
 }
 
-// WhatsApp Modal
 function WhatsAppModal({ account, onClose, onSend }) {
   const { addNotification } = useApp();
   const [whatsapp, setWhatsapp] = useState({
@@ -568,4 +559,8 @@ function WhatsAppModal({ account, onClose, onSend }) {
             </div>
             <div className="form-group">
               <label>Phone Number</label>
-              <input type="tel" name="phone" valu
+              <input type="tel" name="phone" value={whatsapp.phone} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label>Message</label>
+              <textarea name="messa
