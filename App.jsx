@@ -222,7 +222,7 @@ function AddPaymentModal({ account, onClose, onSave }) {
             </div>
             <div className="form-group">
               <label>Payment Amount *</label>
-              <input type="number" name="Payment Amount" value={payment['Payment Amount']} onChange={handleChange} placeholder="৳0.00" required />
+              <input type="number" name="Payment Amount" value={payment['Payment Amount']} onChange={handleChange} placeholder="₹0.00" required />
             </div>
             <div className="form-group">
               <label>Payment Date</label>
@@ -469,8 +469,8 @@ function SendSMSModal({ account, onClose, onSend }) {
 
   const templates = {
     reminder: 'Dear {name}, this is a reminder to make your payment. Contact us for details.',
-    payment: 'Thank you {name}! We received your payment of ৳{amount}. Thank you!',
-    followup: 'Hi {name}, following up on your account. Please call us at your earliest convenience.',
+    payment: 'Thank you {name}! We received your payment. Thank you!',
+    followup: 'Hi {name}, following up on your account. Please call us.',
     custom: ''
   };
 
@@ -568,4 +568,4 @@ function WhatsAppModal({ account, onClose, onSend }) {
             </div>
             <div className="form-group">
               <label>Phone Number</label>
-       
+              <input type="tel" name="phone" valu
